@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Websiity – Billing & Quote Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { DEFAULT: '#0f0e2a', light: '#1e1d45', accent: '#4f46e5' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+    .cart-scroll::-webkit-scrollbar { width: 4px; }
+    .cart-scroll::-webkit-scrollbar-track { background: transparent; }
+    .cart-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
+
+  <!-- Top Brand Bar -->
+  <div class="w-full max-w-7xl">
+
+    <!-- Page Header / Brand -->
+    <div class="bg-white text-gray-800 border border-gray-200 rounded-2xl px-6 py-5 mb-4 flex items-center justify-between shadow-sm no-print">
+      <div class="flex items-center gap-4">
+        <!-- Logo Mark -->
+        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center bg-white">
+          <img id="logoImg" src="./Websiity_logo.jpeg" class="w-full h-full object-contain" alt="websiity">
+        </div>
+        <div>
+          <p class="text-gray-500 text-xs mt-0.5 font-medium">Professional Websites & Digital Platforms</p>
+        </div>
+      </div>
+      <div class="text-right hidden sm:block">
+        <p class="text-gray-400 text-xs uppercase tracking-widest font-semibold">Quote Builder</p>
+        <p class="text-gray-600 text-sm mt-0.5 font-medium" id="todayDate"></p>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="flex gap-4 items-start">
+
+      <!-- SIDEBAR -->
+      <aside class="w-72 xl:w-80 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden no-print" style="max-height: calc(100vh - 130px);">
+        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Services & Pricing</p>
+          <p class="text-xs text-gray-400 mt-0.5">Click + to add to your quote</p>
+        </div>
+        <div class="sidebar-scroll overflow-y-auto flex-1">
+          <div id="serviceList"></div>
+        </div>
+      </aside>
+
+      <!-- RIGHT PANEL -->
+      <div class="flex-1 flex flex-col gap-4 min-w-0">
+
+        <!-- Cart Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <!-- Cart Header -->
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <div>
+              <h2 class="text-base font-semibold text-gray-800">Your Quote</h2>
+              <p class="text-xs text-gray-400 mt-0.5">Add services from the sidebar to build your estimate</p>
+            </div>
+            <span id="cartBadge" class="hidden bg-brand text-white text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+          </div>
+
+          <!-- Cart Table -->
+          <div class="cart-scroll overflow-y-auto" style="max-height: 340px;">
+            <!-- Empty State -->
+            <div id="emptyState" class="flex flex-col items-center justify-center py-16 text-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5h14M9 21a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z"/>
+              </svg>
+              <p class="text-sm font-medium text-gray-300">No services added yet</p>
+              <p class="text-xs text-gray-200 mt-1">Click + next to any service to start</p>
+            </div>
+
+            <!-- Table -->
+            <table id="cartTable" class="w-full hidden">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <th class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-6 py-3 w-1/2">Service</th>
+                  <th class="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Qty</th>
+                  <th class="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Unit price</th>
+                  <th class="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Amount</th>
+                  <th class="px-4 py-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody id="cartBody" class="divide-y divide-gray-50"></tbody>
+            </table>
+          </div>
+
+          <!-- Custom Service Input -->
+          <div class="px-6 py-4 bg-indigo-50/60 border-t border-indigo-100">
+            <p class="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-2">+ Add custom service</p>
+            <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+              <input
+                id="customName"
+                type="text"
+                placeholder="Service name (e.g. Logo design)"
+                class="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white placeholder-gray-300"
+              />
+              <input
+                id="customPrice"
+                type="number"
+                placeholder="Price (₹)"
+                min="0"
+                class="w-32 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white placeholder-gray-300"
+              />
+              <button
+                onclick="addCustom()"
+                class="bg-brand hover:bg-brand-light text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+              >Add</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totals + Download Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="px-6 py-5">
+            <!-- Subtotal & Tax -->
+            <div class="flex justify-between items-center text-sm text-gray-500 mb-2">
+              <span>Subtotal</span>
+              <span id="subtotalVal" class="font-medium text-gray-700">₹0</span>
+            </div>
+            <div class="flex justify-between items-center text-sm text-gray-400 mb-4">
+              <span>GST / Tax (if applicable)</span>
+              <span class="italic text-xs">As per project terms</span>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-gray-100 mb-4"></div>
+
+            <!-- Total -->
+            <div class="flex justify-between items-center mb-5">
+              <span class="text-base font-semibold text-gray-800">Total estimate</span>
+              <span id="totalVal" class="text-2xl font-bold text-brand">₹0</span>
+            </div>
+
+            <!-- Advance Note -->
+            <div class="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-5">
+              <p class="text-xs text-amber-700 font-semibold mb-0.5">Project terms</p>
+              <ul class="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
+                <li>50% advance payment required before project start</li>
+                <li>Remaining payment before final deployment</li>
+                <li>Hosting & domain charges may be separate</li>
+                <li>Limited revisions included</li>
+              </ul>
+            </div>
+
+            <!-- Payments UI -->
+            <div class="mb-5">
+              <label class="flex items-center gap-2 text-sm text-gray-700 font-medium cursor-pointer mb-3 bg-gray-50 p-3 rounded-xl border border-gray-100 transition-colors hover:bg-gray-100">
+                <input type="checkbox" id="markPaid50" class="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand accent-brand">
+                Mark 50% Advance as Paid
+              </label>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="showQR('50')"
+                  class="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-xs"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                  QR to Pay 50%
+                </button>
+                <button
+                  onclick="showQR('100')"
+                  class="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-xs"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                  QR to Pay Total
+                </button>
+              </div>
+
+              <!-- QR Modal/Section -->
+              <div id="qrSection" class="hidden fixed right-8 top-1/2 -translate-y-1/2 z-50">
+                <div class="bg-white p-6 border border-gray-200 shadow-2xl rounded-2xl flex flex-col items-center relative w-[320px]">
+                  <button onclick="closeQR()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <p class="text-xs text-gray-500 mb-4 uppercase tracking-widest font-semibold">Scan to Pay <span id="qrTypeLabel"></span></p>
+                  <div class="w-48 h-48 bg-white border border-gray-200 rounded-xl flex items-center justify-center mb-4 shadow-sm p-2">
+                    <!-- QR Code Image -->
+                    <img src="" id="qrImage" alt="QR Code" class="w-full h-full object-contain">
+                  </div>
+                  <p class="text-xl font-bold text-gray-800" id="qrAmountLabel">₹0</p>
+                  <p class="text-xs text-gray-400 mt-2 text-center">Scan with any UPI App (GPay, PhonePe, Paytm)</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Download Button -->
+            <button
+              onclick="downloadPDF()"
+              class="w-full bg-brand hover:bg-brand-light text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Download quote as PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Footer note -->
+        <p class="text-center text-xs text-gray-400 pb-2">
+          Thank you for choosing <strong class="text-gray-500">Websiity</strong> — we build modern websites focused on design, performance & growth.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Data ───────────────────────────────────────────────────────────────
+    const SERVICES = [
+      {
+        cat: "UI/UX Design",
+        icon: "✨",
+        items: [
+          { name: "Single Mobile Screen", price: 500 },
+          { name: "Website UI Design", price: 3000 },
+          { name: "Complete App UI", price: 5000, plus: true },
+        ]
+      },
+      {
+        cat: "Business & Portfolio Websites",
+        icon: "🌐",
+        items: [
+          { name: "Landing page website", price: 2000 },
+          { name: "Personal portfolio website", price: 5000 },
+          { name: "Company website", price: 8000 },
+          { name: "Multi-page business website", price: 12000 },
+          { name: "Custom responsive website", price: 15000, plus: true },
+        ]
+      },
+      {
+        cat: "E-commerce & Shopping Platforms",
+        icon: "🛒",
+        items: [
+          { name: "Basic e-commerce website", price: 15000 },
+          { name: "Online shopping platform", price: 25000 },
+          { name: "Advanced e-commerce store", price: 40000, plus: true },
+          { name: "Multi-vendor marketplace", price: 60000, plus: true },
+          { name: "Custom product management system", price: 35000, plus: true },
+        ]
+      },
+      {
+        cat: "Order & Booking Platforms",
+        icon: "📋",
+        items: [
+          { name: "Food order website", price: 18000 },
+          { name: "Online order management platform", price: 25000 },
+          { name: "Booking & appointment system", price: 20000 },
+          { name: "Restaurant order platform", price: 30000, plus: true },
+          { name: "Custom order tracking system", price: 35000, plus: true },
+        ]
+      },
+      {
+        cat: "Features & Integrations",
+        icon: "⚙️",
+        items: [
+          { name: "Payment gateway integration", price: 3000 },
+          { name: "Google Analytics setup", price: 1500 },
+          { name: "SEO setup", price: 2000 },
+          { name: "Google Search indexing", price: 1000 },
+          { name: "Admin dashboard", price: 8000, plus: true },
+          { name: "WhatsApp chat integration", price: 800 },
+          { name: "Email integration", price: 1000 },
+        ]
+      },
+      {
+        cat: "Maintenance & Support",
+        icon: "🛠️",
+        items: [
+          { name: "Monthly website maintenance", price: 2000, note: "/mo" },
+          { name: "Website updates", price: 1000, plus: true },
+          { name: "Performance optimization", price: 2500 },
+          { name: "Bug fixing support", price: 1500, plus: true },
+        ]
+      },
+    ];
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    let cart = {};
+    let customCounter = 0;
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    function fmt(n) {
+      return "₹" + Number(n).toLocaleString("en-IN");
+    }
+
+    function fmtPlain(n) {
+      return "Rs." + Number(n).toLocaleString("en-IN");
+    }
+
+    // ─── Today date ──────────────────────────────────────────────────────────
+    document.getElementById("todayDate").textContent = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit", month: "long", year: "numeric"
+    });
+
+    // ─── Render sidebar ──────────────────────────────────────────────────────
+    function renderSidebar() {
+      const list = document.getElementById("serviceList");
+      let html = "";
+      SERVICES.forEach((cat, index) => {
+        html += `
+          <div class="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between transition-colors border-b border-gray-100 bg-white sticky top-0 z-10" onclick="toggleCategory(${index})">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+              <span>${cat.icon}</span><span>${cat.cat}</span>
+            </p>
+            <svg id="icon-cat-${index}" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform duration-200 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div id="cat-${index}" class="block overflow-hidden transition-all duration-200">`;
+        cat.items.forEach(item => {
+          const key = encodeKey(cat.cat, item.name);
+          html += `
+          <div class="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 group">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-700 leading-snug truncate">${item.name}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${fmt(item.price)}${item.plus ? "<span class='text-gray-300'>+</span>" : ""}${item.note || ""}</p>
+            </div>
+            <button
+              onclick="addToCart('${key}', &quot;${item.name}&quot;, ${item.price})"
+              aria-label="Add ${item.name}"
+              class="flex-shrink-0 w-7 h-7 rounded-full bg-brand hover:bg-brand-light text-white text-lg font-light flex items-center justify-center transition-all group-hover:scale-110"
+            >+</button>
+          </div>`;
+        });
+        html += `</div>`;
+      });
+      list.innerHTML = html;
+    }
+
+    function toggleCategory(index) {
+      const content = document.getElementById(`cat-${index}`);
+      const icon = document.getElementById(`icon-cat-${index}`);
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        content.classList.add('block');
+        icon.classList.add('rotate-180');
+      } else {
+        content.classList.remove('block');
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+      }
+    }
+
+    function encodeKey(cat, name) {
+      return btoa(unescape(encodeURIComponent(cat + "||" + name))).replace(/=/g, "");
+    }
+
+    // ─── Cart ops ─────────────────────────────────────────────────────────────
+    function addToCart(key, name, price) {
+      if (cart[key]) {
+        cart[key].qty++;
+      } else {
+        cart[key] = { name, price, qty: 1, custom: false };
+      }
+      renderCart();
+    }
+
+    function toggleHide(key) {
+      if (cart[key]) {
+        cart[key].hidden = !cart[key].hidden;
+        renderCart();
+      }
+    }
+
+    function removeFromCart(key) {
+      delete cart[key];
+      renderCart();
+    }
+
+    function changeQty(key, delta) {
+      if (!cart[key]) return;
+      cart[key].qty += delta;
+      if (cart[key].qty < 1) delete cart[key];
+      renderCart();
+    }
+
+    function addCustom() {
+      const nameEl = document.getElementById("customName");
+      const priceEl = document.getElementById("customPrice");
+      const name = nameEl.value.trim();
+      const price = parseFloat(priceEl.value);
+      if (!name || isNaN(price) || price < 0) {
+        nameEl.classList.add("ring-2", "ring-red-300");
+        setTimeout(() => nameEl.classList.remove("ring-2", "ring-red-300"), 1500);
+        return;
+      }
+      const key = "custom_" + (++customCounter);
+      cart[key] = { name, price, qty: 1, custom: true };
+      nameEl.value = "";
+      priceEl.value = "";
+      renderCart();
+    }
+
+    // ─── Render cart ──────────────────────────────────────────────────────────
+    function renderCart() {
+      const body = document.getElementById("cartBody");
+      const empty = document.getElementById("emptyState");
+      const table = document.getElementById("cartTable");
+      const badge = document.getElementById("cartBadge");
+      const keys = Object.keys(cart);
+
+      if (keys.length === 0) {
+        empty.classList.remove("hidden");
+        table.classList.add("hidden");
+        badge.classList.add("hidden");
+        updateTotals(0);
+        return;
+      }
+
+      empty.classList.add("hidden");
+      table.classList.remove("hidden");
+      badge.classList.remove("hidden");
+      badge.textContent = keys.length + " item" + (keys.length > 1 ? "s" : "");
+
+      let total = 0;
+      let html = "";
+      keys.forEach(key => {
+        const item = cart[key];
+        const amt = item.price * item.qty;
+        if (!item.hidden) total += amt;
+        html += `
+        <tr class="hover:bg-gray-50 transition-colors ${item.hidden ? 'opacity-50' : ''}">
+          <td class="px-6 py-3">
+            <p class="text-sm text-gray-800 leading-snug ${item.hidden ? 'line-through' : ''}">${item.name}</p>
+            ${item.custom ? `<span class="inline-block text-xs bg-indigo-50 text-indigo-400 font-medium px-2 py-0.5 rounded-full mt-0.5">custom</span>` : ""}
+          </td>
+          <td class="px-3 py-3">
+            <div class="flex items-center justify-center gap-1.5 ${item.hidden ? 'pointer-events-none opacity-50' : ''}">
+              <button onclick="changeQty('${key}', -1)" class="w-6 h-6 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-medium transition-colors">−</button>
+              <span class="text-sm font-semibold text-gray-700 w-5 text-center">${item.qty}</span>
+              <button onclick="changeQty('${key}', 1)" class="w-6 h-6 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-medium transition-colors">+</button>
+            </div>
+          </td>
+          <td class="px-3 py-3 text-right">
+            <span class="text-sm text-gray-500">${fmt(item.price)}</span>
+          </td>
+          <td class="px-3 py-3 text-right">
+            <span class="text-sm font-semibold text-gray-800 ${item.hidden ? 'line-through text-gray-400' : ''}">${fmt(amt)}</span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-end gap-1">
+              <button onclick="toggleHide('${key}')" aria-label="Toggle Hide" class="text-gray-400 hover:text-brand transition-colors p-1 rounded-lg hover:bg-gray-100">
+                ${item.hidden ? 
+                  `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>` 
+                  : 
+                  `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`
+                }
+              </button>
+              <button onclick="removeFromCart('${key}')" aria-label="Remove" class="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      });
+      body.innerHTML = html;
+      updateTotals(total);
+    }
+
+    let currentTotal = 0;
+
+    function updateTotals(total) {
+      currentTotal = total;
+      const formatted = fmt(total);
+      document.getElementById("subtotalVal").textContent = formatted;
+      document.getElementById("totalVal").textContent = formatted;
+      
+      // Update QR amount if open
+      const qrSection = document.getElementById('qrSection');
+      if (!qrSection.classList.contains('hidden')) {
+        const type = document.getElementById('qrTypeLabel').textContent.includes('50%') ? '50' : '100';
+        showQR(type);
+      }
+    }
+
+    function showQR(type) {
+      const qrSection = document.getElementById('qrSection');
+      const amountLabel = document.getElementById('qrAmountLabel');
+      const typeLabel = document.getElementById('qrTypeLabel');
+      const qrImage = document.getElementById('qrImage');
+      
+      let amountToPay = 0;
+      if (type === '50') {
+        amountToPay = currentTotal / 2;
+        typeLabel.textContent = "50% Advance";
+      } else {
+        amountToPay = currentTotal;
+        typeLabel.textContent = "Total Amount";
+      }
+      
+      amountLabel.textContent = fmt(amountToPay);
+      
+      // Generate QR using QRious
+      try {
+        const qr = new QRious({
+          value: `upi://pay?pa=websiity@upi&pn=Websiity&am=${amountToPay}`,
+          size: 250
+        });
+        qrImage.src = qr.toDataURL();
+      } catch (e) {
+        console.error("Error generating QR", e);
+      }
+      
+      qrSection.classList.remove('hidden');
+    }
+
+    function closeQR() {
+      document.getElementById('qrSection').classList.add('hidden');
+    }
+
+    // ─── PDF Download ─────────────────────────────────────────────────────────
+    function downloadPDF() {
+      const keys = Object.keys(cart);
+      const visibleKeys = keys.filter(k => !cart[k].hidden);
+      if (visibleKeys.length === 0) {
+        alert("Please add at least one visible service before downloading.");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const W = 210;
+      const M = 18;
+      let y = 0;
+
+      // Header band
+      doc.setFillColor(15, 14, 42);
+      doc.rect(0, 0, W, 32, "F");
+
+      // Logo Image
+      const logoImg = document.getElementById("logoImg");
+      if (logoImg && logoImg.complete) {
+        try {
+          doc.addImage(logoImg, "JPEG", M, 8, 12, 12);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      
+      // Brand name
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Websiity", M + 15, 13);
+
+      // Tagline
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(180, 178, 210);
+      doc.text("  Professional Websites & Digital Platforms", M + 15, 18);
+      
+      // Contact Details
+      doc.setFontSize(7);
+      doc.setTextColor(140, 140, 170);
+      doc.text("websiity@gmail.com  |  +91 7604990180", M + 15, 23);
+
+      // Date & label right
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(180, 178, 210);
+      doc.text("QUOTE / INVOICE", W - M, 12, { align: "right" });
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.text(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }), W - M, 20, { align: "right" });
+
+      y = 44;
+
+      // Section title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 30, 50);
+      doc.text("Service Breakdown", M, y);
+      y += 6;
+
+      // Table header
+      doc.setFillColor(245, 244, 252);
+      doc.rect(M, y, W - M * 2, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 95, 140);
+      doc.text("SERVICE", M + 2, y + 5.5);
+      doc.text("QTY", 130, y + 5.5, { align: "right" });
+      doc.text("UNIT PRICE", 162, y + 5.5, { align: "right" });
+      doc.text("AMOUNT", W - M - 2, y + 5.5, { align: "right" });
+      y += 10;
+
+      let total = 0;
+      let rowNum = 0;
+
+      visibleKeys.forEach(key => {
+        const item = cart[key];
+        const amt = item.price * item.qty;
+        total += amt;
+
+        if (rowNum % 2 === 0) {
+          doc.setFillColor(252, 252, 254);
+          doc.rect(M, y - 1, W - M * 2, 9, "F");
+        }
+
+        const nameLines = doc.splitTextToSize(item.name + (item.custom ? " (custom)" : ""), 85);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(35, 30, 60);
+        doc.text(nameLines, M + 2, y + 5);
+        doc.text(String(item.qty), 130, y + 5, { align: "right" });
+        doc.text(fmtPlain(item.price), 162, y + 5, { align: "right" });
+        doc.setFont("helvetica", "bold");
+        doc.text(fmtPlain(amt), W - M - 2, y + 5, { align: "right" });
+
+        y += nameLines.length * 5 + 4;
+        rowNum++;
+
+        if (y > 265) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+
+      y += 3;
+
+      // Separator line
+      doc.setDrawColor(200, 195, 230);
+      doc.setLineWidth(0.4);
+      doc.line(M, y, W - M, y);
+      y += 8;
+
+      // Subtotal
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(100, 95, 140);
+      doc.text("Subtotal", 150, y, { align: "right" });
+      doc.setTextColor(35, 30, 60);
+      doc.setFont("helvetica", "bold");
+      doc.text(fmtPlain(total), W - M - 2, y, { align: "right" });
+      y += 6;
+
+      // Tax
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 95, 140);
+      doc.text("GST / Tax", 150, y, { align: "right" });
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.text("As per project terms", W - M - 2, y, { align: "right" });
+      y += 8;
+
+      const isPaid50 = document.getElementById("markPaid50")?.checked;
+
+      if (isPaid50) {
+        // Total Estimate (small)
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(100, 95, 140);
+        doc.text("Total Estimate", 150, y, { align: "right" });
+        doc.setTextColor(35, 30, 60);
+        doc.setFont("helvetica", "bold");
+        doc.text(fmtPlain(total), W - M - 2, y, { align: "right" });
+        y += 6;
+
+        // Advance Paid
+        const advance = total / 2;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 95, 140);
+        doc.text("Advance Paid (50%)", 150, y, { align: "right" });
+        doc.setTextColor(16, 185, 129); // Green
+        doc.setFont("helvetica", "bold");
+        doc.text("- " + fmtPlain(advance), W - M - 2, y, { align: "right" });
+        y += 8;
+
+        // Balance band
+        doc.setFillColor(15, 14, 42);
+        doc.roundedRect(M, y, W - M * 2, 12, 3, 3, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text("Balance to Pay", M + 4, y + 8);
+        doc.text(fmtPlain(total - advance), W - M - 4, y + 8, { align: "right" });
+        
+        // Paid stamp
+        // doc.setTextColor(16, 185, 129); // Green
+        // doc.setFontSize(10);
+        // doc.text("PAID 50% ADVANCE", M + 40, y + 8);
+        
+        y += 20;
+      } else {
+        // Total band
+        doc.setFillColor(15, 14, 42);
+        doc.roundedRect(M, y, W - M * 2, 12, 3, 3, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text("Total Estimate", M + 4, y + 8);
+        doc.text(fmtPlain(total), W - M - 4, y + 8, { align: "right" });
+        y += 20;
+      }
+
+      // Terms box
+      doc.setFillColor(255, 251, 235);
+      doc.roundedRect(M, y, W - M * 2, 22, 3, 3, "F");
+      doc.setDrawColor(251, 191, 36);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(M, y, W - M * 2, 22, 3, 3, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(146, 64, 14);
+      doc.text("Project Terms", M + 4, y + 6);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(180, 83, 9);
+      doc.text("• 50% advance payment required before project start", M + 4, y + 12);
+      doc.text("• Remaining payment before final deployment  •  Hosting & domain charges may be separate", M + 4, y + 17);
+      y += 30;
+
+      y += 10;
+      
+      // QR Code for Balance
+      const balanceToPay = isPaid50 ? total / 2 : total;
+      
+      if (balanceToPay > 0) {
+        if (y > 230) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        try {
+          const qr = new QRious({
+            value: `upi://pay?pa=websiity@upi&pn=Websiity&am=${balanceToPay}`,
+            size: 250
+          });
+          const qrDataUrl = qr.toDataURL('image/jpeg');
+          
+          doc.addImage(qrDataUrl, 'JPEG', W / 2 - 15, y, 30, 30);
+          y += 34;
+          
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(35, 30, 60);
+          doc.text(`Scan to Pay ${fmtPlain(balanceToPay)}`, W / 2, y, { align: "center" });
+          y += 15;
+        } catch (e) {
+          console.error("Error generating QR code for PDF", e);
+        }
+      }
+
+      // Footer
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(160, 155, 190);
+      doc.text("Thank you for choosing Websiity — we build modern websites focused on design, performance & growth.", W / 2, y, { align: "center" });
+
+      doc.save("websiity-quote.pdf");
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    renderSidebar();
+    renderCart();
+
+    // Enter key on custom inputs
+    document.getElementById("customName").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("customPrice").focus(); });
+    document.getElementById("customPrice").addEventListener("keydown", e => { if (e.key === "Enter") addCustom(); });
+  </script>
+</body>
+</html>
