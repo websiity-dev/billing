@@ -126,26 +126,35 @@
           <!-- Custom Service Input -->
           <div class="px-6 py-4 bg-indigo-50/60 border-t border-indigo-100">
             <p class="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-2">+ Add custom service</p>
-            <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+            <div class="flex flex-col gap-2">
+              <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+                <input
+                  id="customName"
+                  type="text"
+                  aria-label="Custom service name"
+                  placeholder="Service name (e.g. Logo design)"
+                  class="flex-1 min-w-0 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand bg-white placeholder-gray-500 text-gray-800"
+                />
+                <input
+                  id="customPrice"
+                  type="number"
+                  aria-label="Custom service price"
+                  placeholder="Price (₹)"
+                  min="0"
+                  class="w-32 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand bg-white placeholder-gray-500 text-gray-800"
+                />
+                <button
+                  onclick="addCustom()"
+                  class="bg-brand hover:bg-brand-light text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+                >Add</button>
+              </div>
               <input
-                id="customName"
+                id="customFeature"
                 type="text"
-                aria-label="Custom service name"
-                placeholder="Service name (e.g. Logo design)"
-                class="flex-1 min-w-0 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand bg-white placeholder-gray-500 text-gray-800"
+                aria-label="Custom service features"
+                placeholder="Features (comma separated, optional)"
+                class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand bg-white placeholder-gray-500 text-gray-800"
               />
-              <input
-                id="customPrice"
-                type="number"
-                aria-label="Custom service price"
-                placeholder="Price (₹)"
-                min="0"
-                class="w-32 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand bg-white placeholder-gray-500 text-gray-800"
-              />
-              <button
-                onclick="addCustom()"
-                class="bg-brand hover:bg-brand-light text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-              >Add</button>
             </div>
           </div>
         </div>
@@ -273,11 +282,10 @@
         cat: "Business & Portfolio Websites",
         icon: "bi-globe2",
         items: [
-          { name: "Landing page website", price: 2000 },
-          { name: "Business portfolio website", price: 5000 },
-          { name: "Company website", price: 8000 },
-          { name: "Multi-page business website", price: 12000 },
-          { name: "Custom responsive website", price: 15000, plus: true },
+  
+          { name: "Business portfolio website", price: 5000, feature: ["Free lifetime maintenance","Contact Form","WhatsApp chat integration","Free upto 2 pages (if you need more pages extra charges may apply)"] },
+          { name: "Company website", price: 8000, feature: ["Free lifetime maintenance","Based On Requirement","Contact Form","WhatsApp chat integration","Email integration"] },
+          { name: "Custom responsive website", price: 15000, feature: ["Free lifetime maintenance","Based On Requirement","Contact Form","WhatsApp chat integration","Email integration"] },
         ]
       },
       {
@@ -360,7 +368,7 @@
             </svg>
           </button>
           <div id="cat-${index}" class="block overflow-hidden transition-all duration-200">`;
-        cat.items.forEach(item => {
+        cat.items.forEach((item, itemIndex) => {
           const key = encodeKey(cat.cat, item.name);
           html += `
           <div class="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 group">
@@ -369,7 +377,7 @@
               <p class="text-xs text-gray-500 mt-0.5">${fmt(item.price)}${item.plus ? "<span class='text-gray-400'>+</span>" : ""}${item.note || ""}</p>
             </div>
             <button
-              onclick="addToCart('${key}', &quot;${item.name}&quot;, ${item.price})"
+              onclick="addToCart('${key}', ${index}, ${itemIndex})"
               aria-label="Add ${item.name}"
               class="flex-shrink-0 w-8 h-8 rounded-full bg-brand hover:bg-brand-light text-white text-lg font-light flex items-center justify-center transition-all group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-1"
             >+</button>
@@ -402,11 +410,12 @@
     }
 
     // ─── Cart ops ─────────────────────────────────────────────────────────────
-    function addToCart(key, name, price) {
+    function addToCart(key, catIndex, itemIndex) {
       if (cart[key]) {
         cart[key].qty++;
       } else {
-        cart[key] = { name, price, qty: 1, custom: false };
+        const item = SERVICES[catIndex].items[itemIndex];
+        cart[key] = { name: item.name, price: item.price, qty: 1, custom: false, feature: item.feature || [] };
       }
       renderCart();
     }
@@ -433,17 +442,22 @@
     function addCustom() {
       const nameEl = document.getElementById("customName");
       const priceEl = document.getElementById("customPrice");
+      const featureEl = document.getElementById("customFeature");
       const name = nameEl.value.trim();
       const price = parseFloat(priceEl.value);
+      const featureStr = featureEl ? featureEl.value.trim() : "";
+      const feature = featureStr ? featureStr.split(',').map(f => f.trim()).filter(f => f) : [];
+
       if (!name || isNaN(price) || price < 0) {
         nameEl.classList.add("ring-2", "ring-red-300");
         setTimeout(() => nameEl.classList.remove("ring-2", "ring-red-300"), 1500);
         return;
       }
       const key = "custom_" + (++customCounter);
-      cart[key] = { name, price, qty: 1, custom: true };
+      cart[key] = { name, price, qty: 1, custom: true, feature: feature };
       nameEl.value = "";
       priceEl.value = "";
+      if (featureEl) featureEl.value = "";
       renderCart();
     }
 
@@ -478,6 +492,7 @@
         <tr class="hover:bg-gray-50 transition-colors ${item.hidden ? 'opacity-50' : ''}">
           <td class="px-4 sm:px-6 py-3">
             <p class="text-sm text-gray-800 leading-snug ${item.hidden ? 'line-through' : ''}">${item.name}</p>
+            ${item.feature && item.feature.length ? `<ul class="list-disc list-inside text-xs text-gray-500 mt-1 ${item.hidden ? 'opacity-50 line-through' : ''}">${item.feature.map(f => `<li>${f}</li>`).join('')}</ul>` : ""}
             ${item.custom ? `<span class="inline-block text-xs bg-indigo-50 text-indigo-700 font-medium px-2 py-0.5 rounded-full mt-0.5">custom</span>` : ""}
           </td>
           <td class="px-2 sm:px-3 py-3">
@@ -648,12 +663,23 @@
         const amt = item.price * item.qty;
         total += amt;
 
-        if (rowNum % 2 === 0) {
-          doc.setFillColor(252, 252, 254);
-          doc.rect(M, y - 1, W - M * 2, 9, "F");
+        const nameLines = doc.splitTextToSize(item.name, 85);
+        let featureLinesArray = [];
+        let totalLines = nameLines.length;
+        
+        if (item.feature && item.feature.length) {
+          item.feature.forEach(f => {
+            const fLines = doc.splitTextToSize("• " + f, 80);
+            featureLinesArray.push(fLines);
+            totalLines += fLines.length * 0.8;
+          });
         }
 
-        const nameLines = doc.splitTextToSize(item.name + (item.custom ? " (custom)" : ""), 85);
+        if (rowNum % 2 === 0) {
+          doc.setFillColor(252, 252, 254);
+          doc.rect(M, y - 1, W - M * 2, (totalLines * 5) + 4, "F");
+        }
+
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
         doc.setTextColor(35, 30, 60);
@@ -661,7 +687,19 @@
         doc.setFont("helvetica", "bold");
         doc.text(fmtPlain(amt), W - M - 2, y + 5, { align: "right" });
 
-        y += nameLines.length * 5 + 4;
+        let currentY = y + 5 + (nameLines.length - 1) * 5;
+
+        if (item.feature && item.feature.length) {
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 95, 140);
+          featureLinesArray.forEach(fLines => {
+            currentY += 4;
+            doc.text(fLines, M + 4, currentY);
+            currentY += (fLines.length - 1) * 4;
+          });
+        }
+
+        y = currentY + 4;
         rowNum++;
 
         if (y > 265) {
@@ -828,7 +866,8 @@
 
     // Enter key on custom inputs
     document.getElementById("customName").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("customPrice").focus(); });
-    document.getElementById("customPrice").addEventListener("keydown", e => { if (e.key === "Enter") addCustom(); });
+    document.getElementById("customPrice").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("customFeature").focus(); });
+    document.getElementById("customFeature").addEventListener("keydown", e => { if (e.key === "Enter") addCustom(); });
   </script>
 
   <!-- Mobile Sticky Hamburger -->
