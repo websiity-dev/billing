@@ -37,7 +37,7 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
+<body class="bg-white min-h-screen flex items-start justify-center p-4">
 
   <!-- Top Brand Bar -->
   <div class="w-full max-w-7xl">
@@ -98,7 +98,7 @@
           </div>
 
           <!-- Cart Table -->
-          <div class="cart-scroll overflow-y-auto" style="max-height: 340px;">
+          <div class="cart-scroll overflow-y-auto">
             <!-- Empty State -->
             <div id="emptyState" class="flex flex-col items-center justify-center py-16 text-gray-300">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
@@ -202,6 +202,10 @@
                 <label class="flex-1 flex items-center gap-3 text-sm text-gray-800 font-medium cursor-pointer bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 transition-colors hover:bg-gray-100 focus-within:ring-2 focus-within:ring-brand">
                   <input type="checkbox" id="hideQrPdf" class="w-5 h-5 text-brand rounded border-gray-300 focus:ring-brand accent-brand">
                   Hide QR in PDF
+                </label>
+                <label class="flex-1 flex items-center gap-3 text-sm text-gray-800 font-medium cursor-pointer bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 transition-colors hover:bg-gray-100 focus-within:ring-2 focus-within:ring-brand">
+                  <input type="checkbox" id="useAdvanceQrPdf" class="w-5 h-5 text-brand rounded border-gray-300 focus:ring-brand accent-brand">
+                  Use 50% Advance QR in PDF
                 </label>
               </div>
 
@@ -439,6 +443,41 @@
       renderCart();
     }
 
+    function editCartItem(key) {
+      if (!cart[key]) return;
+      cart[key].editing = true;
+      renderCart();
+    }
+
+    function cancelEditCartItem(key) {
+      if (!cart[key]) return;
+      cart[key].editing = false;
+      renderCart();
+    }
+
+    function saveCartItem(key) {
+      const item = cart[key];
+      if (!item) return;
+
+      const nameEl = document.getElementById(`edit-name-${key}`);
+      const featureEl = document.getElementById(`edit-feature-${key}`);
+      const name = nameEl.value.trim();
+      const featureText = featureEl.value.trim();
+
+      if (!name) {
+        nameEl.classList.add("ring-2", "ring-red-300");
+        setTimeout(() => nameEl.classList.remove("ring-2", "ring-red-300"), 1500);
+        return;
+      }
+
+      item.name = name;
+      item.feature = featureText
+        ? featureText.split(",").map(feature => feature.trim()).filter(Boolean)
+        : [];
+      item.editing = false;
+      renderCart();
+    }
+
     function addCustom() {
       const nameEl = document.getElementById("customName");
       const priceEl = document.getElementById("customPrice");
@@ -491,8 +530,19 @@
         html += `
         <tr class="hover:bg-gray-50 transition-colors ${item.hidden ? 'opacity-50' : ''}">
           <td class="px-4 sm:px-6 py-3">
-            <p class="text-sm text-gray-800 leading-snug ${item.hidden ? 'line-through' : ''}">${item.name}</p>
-            ${item.feature && item.feature.length ? `<ul class="list-disc list-inside text-xs text-gray-500 mt-1 ${item.hidden ? 'opacity-50 line-through' : ''}">${item.feature.map(f => `<li>${f}</li>`).join('')}</ul>` : ""}
+            ${item.editing ? `
+              <div class="space-y-2 min-w-[220px]">
+                <input id="edit-name-${key}" type="text" value="${item.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" aria-label="Edit service title" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand" />
+                <input id="edit-feature-${key}" type="text" value="${(item.feature || []).join(', ').replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" aria-label="Edit service features" placeholder="Features (comma separated)" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand" />
+                <div class="flex gap-2">
+                  <button onclick="saveCartItem('${key}')" class="bg-brand hover:bg-brand-light text-white text-xs font-medium px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand">Save</button>
+                  <button onclick="cancelEditCartItem('${key}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400">Cancel</button>
+                </div>
+              </div>
+            ` : `
+              <p class="text-sm text-gray-800 leading-snug ${item.hidden ? 'line-through' : ''}">${item.name}</p>
+              ${item.feature && item.feature.length ? `<ul class="list-disc list-inside text-xs text-gray-500 mt-1 bg-white ${item.hidden ? 'opacity-50 line-through' : ''}">${item.feature.map(f => `<li>${f}</li>`).join('')}</ul>` : ""}
+            `}
             ${item.custom ? `<span class="inline-block text-xs bg-indigo-50 text-indigo-700 font-medium px-2 py-0.5 rounded-full mt-0.5">custom</span>` : ""}
           </td>
           <td class="px-2 sm:px-3 py-3">
@@ -510,6 +560,12 @@
           </td>
           <td class="px-2 sm:px-4 py-3">
             <div class="flex items-center justify-end gap-1">
+              <button onclick="editCartItem('${key}')" aria-label="Edit ${item.name}" class="text-gray-500 hover:text-brand transition-colors p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a2.25 2.25 0 113.182 3.182l-8.25 8.25-3.897.865.865-3.897 6.413-6.412z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 7.125L16.875 4.5M18 14.25V19.5A2.25 2.25 0 0115.75 21.75h-11.25A2.25 2.25 0 012.25 19.5V8.25A2.25 2.25 0 014.5 6h5.25" />
+                </svg>
+              </button>
               <button onclick="toggleHide('${key}')" aria-label="${item.hidden ? 'Show item' : 'Hide item'}" class="text-gray-500 hover:text-brand transition-colors p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand">
                 ${item.hidden ? 
                   `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>` 
@@ -645,18 +701,26 @@
       doc.text("Service Breakdown", M, y);
       y += 6;
 
-      // Table header
-      doc.setFillColor(245, 244, 252);
-      doc.rect(M, y, W - M * 2, 8, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
-      doc.setTextColor(100, 95, 140);
-      doc.text("SERVICE", M + 2, y + 5.5);
-      doc.text("AMOUNT", W - M - 2, y + 5.5, { align: "right" });
-      y += 10;
-
       let total = 0;
-      let rowNum = 0;
+
+      function drawTableHeader() {
+        doc.setFillColor(245, 244, 252);
+        doc.rect(M, y, W - M * 2, 8, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 95, 140);
+        doc.text("SERVICE", M + 2, y + 5.5);
+        doc.text("AMOUNT", W - M - 2, y + 5.5, { align: "right" });
+        y += 10;
+      }
+
+      function startNewPage() {
+        doc.addPage();
+        y = 20;
+        drawTableHeader();
+      }
+
+      drawTableHeader();
 
       visibleKeys.forEach(key => {
         const item = cart[key];
@@ -671,44 +735,43 @@
           item.feature.forEach(f => {
             const fLines = doc.splitTextToSize("• " + f, 80);
             featureLinesArray.push(fLines);
-            totalLines += fLines.length * 0.8;
+            totalLines += fLines.length * 0.9;
           });
         }
 
-        if (rowNum % 2 === 0) {
-          doc.setFillColor(252, 252, 254);
-          doc.rect(M, y - 1, W - M * 2, (totalLines * 5) + 4, "F");
+        const rowHeight = (totalLines * 5.5) + 4;
+        if (y + rowHeight > 270) {
+          startNewPage();
         }
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setTextColor(35, 30, 60);
-        doc.text(nameLines, M + 2, y + 5);
+        doc.text(nameLines, M + 2, y + 5.5);
         doc.setFont("helvetica", "bold");
-        doc.text(fmtPlain(amt), W - M - 2, y + 5, { align: "right" });
+        doc.text(fmtPlain(amt), W - M - 2, y + 5.5, { align: "right" });
 
-        let currentY = y + 5 + (nameLines.length - 1) * 5;
+        let currentY = y + 5.5 + (nameLines.length - 1) * 5.5;
 
         if (item.feature && item.feature.length) {
-          doc.setFontSize(7.5);
+          doc.setFontSize(8.5);
           doc.setTextColor(100, 95, 140);
           featureLinesArray.forEach(fLines => {
-            currentY += 4;
+            currentY += 4.5;
             doc.text(fLines, M + 4, currentY);
-            currentY += (fLines.length - 1) * 4;
+            currentY += (fLines.length - 1) * 4.5;
           });
         }
 
         y = currentY + 4;
-        rowNum++;
 
-        if (y > 265) {
-          doc.addPage();
-          y = 20;
-        }
       });
 
       y += 3;
+
+      if (y > 200) {
+        startNewPage();
+      }
 
       // Separator line
       doc.setDrawColor(200, 195, 230);
@@ -804,19 +867,19 @@
 
       y += 10;
       
-      // QR Code for Balance
-      const balanceToPay = isPaid50 ? total / 2 : total;
+      // QR Code for the selected payment amount
       const hideQr = document.getElementById("hideQrPdf")?.checked;
+      const useAdvanceQr = document.getElementById("useAdvanceQrPdf")?.checked;
+      const qrAmount = useAdvanceQr || isPaid50 ? total / 2 : total;
       
-      if (balanceToPay > 0 && !hideQr) {
+      if (qrAmount > 0 && !hideQr) {
         if (y > 230) {
-          doc.addPage();
-          y = 20;
+          startNewPage();
         }
         
         try {
           const qr = new QRious({
-            value: `upi://pay?pa=8825722455@ptsbi&pn=Websiity&am=${balanceToPay}`,
+            value: `upi://pay?pa=8825722455@ptsbi&pn=Websiity&am=${qrAmount}`,
             size: 250
           });
           const qrDataUrl = qr.toDataURL('image/jpeg');
@@ -827,7 +890,7 @@
           doc.setFont("helvetica", "bold");
           doc.setFontSize(9);
           doc.setTextColor(35, 30, 60);
-          doc.text(`Scan to Pay ${fmtPlain(balanceToPay)}`, W / 2, y, { align: "center" });
+          doc.text(`Scan to Pay ${fmtPlain(qrAmount)}`, W / 2, y, { align: "center" });
           y += 15;
         } catch (e) {
           console.error("Error generating QR code for PDF", e);
